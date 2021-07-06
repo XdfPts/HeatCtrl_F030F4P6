@@ -1,0 +1,12 @@
+Listings/
+Objects/
+DebugConfig/
+.vscode/
+1
+q
+*.uvguix*
+*.scvd
+RTE/
+Doxygen/
+unused
+git
