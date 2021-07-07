@@ -1,4 +1,5 @@
- #include "stm32f030x8.h"
+ #include "stm32f030x6.h"
+ //#include "stm32f0xx.h"
  #include "mytype.h"
 /*
  -------------- analog inputs --------
@@ -155,7 +156,7 @@ void  ConfigureADC()
   ADC1->SMPR  |= (ADC_SMPR_SMP_0  | ADC_SMPR_SMP_1 | ADC_SMPR_SMP_2) ; 				// measure time 240 clk 
   ADC->CCR 	  |= (ADC_CCR_VREFEN  | ADC_CCR_TSEN); 
 
-  ADC1->CHSELR = ADC_CHSELR_CHSEL1 | ADC_CHSELR_CHSEL3 | ADC_CHSELR_CHSEL4
+  ADC1->CHSELR = ADC_CHSELR_CHSEL1 | ADC_CHSELR_CHSEL3 | ADC_CHSELR_CHSEL2
 								   | ADC_CHSELR_CHSEL17 | ADC_CHSELR_CHSEL16 ;		// ch0 & REFINT & TempSensor
   	
   CalibrateADC();

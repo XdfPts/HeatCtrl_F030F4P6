@@ -3,6 +3,8 @@
 #include "lcd_i2c.h"  
 #include "srv.h"  
 
+unsigned const MaxCodePowReg = 2975;
+unsigned const OneProcPow    = (MaxCodePowReg-5)*10; 
 /*
  //--- diplay 16 x 2 ----
 	PB10 - SCL I2C2
@@ -20,15 +22,34 @@
   PA7 -> gpio output - управление выходным ключом 
   PA4 -> onboard LED 
 */
+/* MaxCodePowReg = 2975 - max значение потенциометра ( соотв. мв напряжения) регулировки мощности
+   Если взять период ШИМ = 2984, то время выключения от начала периода будет соотв. коду потенциометра
+   Рассчетное значение мощности пока не оценвается - нет данных по костюму 
+*/
+//int ButtIraCnt; unsigned WhoPress;
 
+ char 	  PowState;
+ char 	  BtnState;
+ unsigned BtnMsecCnt;
+ uns	  RegPowVal;
 
 volatile unsigned sysTimer;
 
 extern "C" void SysTick_Handler() 
 	{  sysTimer++; 
-	   if ((sysTimer % 1000) == 0) 
-		   GPIOA->ODR ^= BIT(4);
-	}
+	   if (PowState) 	
+	   {
+		if ((sysTimer % MaxCodePowReg) < RegPowVal)
+		{ // pow on 		
+			GPIOA->BSRR = BIT(4+16) | BIT(7);
+			//GPIOA->BSRR = ;
+		}
+		else
+		{
+		 GPIOA->BSRR = BIT(4) | BIT(7+16); // off
+		}		   
+	   }
+   } 
 extern  int TmpC;
 extern  uns PowCtrl,LoadCurrent,LoadVoltage;
 int		AdcLoopF();
@@ -66,6 +87,38 @@ bool	IsDeltaT(unsigned* FromTime,unsigned dt)
 unsigned	abs(int val) { if (val < 0) val *= -1; return val;}
 
  //-----------------------------------------------------------------
+char	CheckButtons()
+ //-----------------------------------------------------------------
+ { 
+   char btn = 	(GPIOA->IDR & (BIT(5)|BIT(6)) ) >> 5;
+   if (btn != BtnState)
+   {
+	if ( IsDeltaT(&BtnMsecCnt,30) )
+	{ 
+	  BtnState =btn;  	
+	  return 1;
+	}
+   }
+   else BtnMsecCnt = sysTimer;
+   return 0;
+ }
+void	ClearLine(int L) { LCDI2C_setCursor(0,L); printf("                ");}
+
+ void	PowerOn( char State )
+ {  LCDI2C_setCursor(0,0); 
+	 if (State == 1) 
+	 { 
+		 printf("- Подогрев вкл -");
+		 PowState = 1; 
+	 }		 
+	 else  
+	 {	 printf("  Подогрев выкл  ");
+		 ClearLine(1);
+		 PowState = 0; 
+	 }	
+	 
+ }
+ //-----------------------------------------------------------------
 int		main()
  //-----------------------------------------------------------------	
  { u32 Tindic=0; uns prevPow=0;
@@ -75,22 +128,30 @@ int		main()
   LCDI2C_clear();
   LCDI2C_command(192);
   ConfigureADC();
-  //LCDI2C_backlight();
-	//CreateBigNum();
-  
-  //byte cx,cy; cx = cy = 0;
+	 
+  PowerOn(0);
   while (1)
   {
+		if (CheckButtons())
+		{
+			if (BtnState != 1 ) // == 1 - release
+				PowerOn(BtnState == 0);
+		}
 		AdcLoopF();
 		if (IsDeltaT( &Tindic,500 ) || abs(PowCtrl -prevPow ) > 100)
 		{
-		 //GPIOC->ODR ^= BIT(LED3_PIN);
-		 LCDI2C_setCursor(0,0);
-	     printf("рег/ток/напряж",PowCtrl);
 		 prevPow = PowCtrl;
-		 LCDI2C_setCursor(0,1);
-		 //unsigned V = 	
-		 printf(" %u %u %u ",PowCtrl,LoadCurrent,LoadVoltage);
+         if (PowState)
+		 {
+		  RegPowVal	= PowCtrl;
+		  unsigned clcv		= PowCtrl * 1000;
+		  unsigned ProcW	=  clcv / OneProcPow;
+		  unsigned 	ost 	= clcv % OneProcPow ;
+		  if (ost > MaxCodePowReg /2) ProcW++;
+		  if (ProcW > 100) { ProcW = 100; RegPowVal = MaxCodePowReg;}
+		  LCDI2C_setCursor(0,1);
+		  printf("мошность %u  ",ProcW);
+		 }
 		}
 	    
 		//LCDI2C_write_String(txt);

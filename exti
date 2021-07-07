@@ -1,0 +1,19 @@
+extern "C" void	EXTI4_15_IRQHandler()
+ {
+	ButtIraCnt++;	
+	 WhoPress = EXTI->PR;
+ }
+void	Configure_EXTI()
+{
+  /* Configure Syscfg, exti and nvic for pushbutton PA0 */
+  /* (1) PA0 as source input */
+  /* (2) unmask port 0 */
+  /* (3) Rising edge */
+  /* (4) Set priority */
+  /* (5) Enable EXTI0_1_IRQn */
+  SYSCFG->EXTICR[3] |= 0x110;  // PA6 PA5
+  EXTI->IMR |= EXTI_IMR_MR5; /* (2) */ 
+  EXTI->RTSR |= EXTI_RTSR_TR0; /* (3) */ 
+  NVIC_SetPriority(EXTI4_15_IRQn, 0); /* (4) */ 
+  NVIC_EnableIRQ(EXTI4_15_IRQn); /* (5) */ 
+}
